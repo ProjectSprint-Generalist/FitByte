@@ -35,7 +35,7 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 	weight1 := 75.5
 	height1 := 180.0
 	imageURI1 := "https://example.com/image1.jpg"
-	
+
 	users := []models.UserResponse{
 		{
 			ID:         1,
@@ -89,7 +89,7 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 	weight := 75.5
 	height := 180.0
 	imageURI := "https://example.com/image1.jpg"
-	
+
 	user := models.UserResponse{
 		ID:         uint(id),
 		Email:      "john@example.com",
@@ -171,7 +171,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	weight := 75.5
 	height := 180.0
 	imageURI := "https://example.com/image1.jpg"
-	
+
 	user := models.UserResponse{
 		ID:         uint(id),
 		Email:      "john@example.com",
