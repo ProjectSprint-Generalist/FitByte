@@ -3,105 +3,79 @@ package handlers
 import (
 	"net/http"
 	"strconv"
-	"time"
 
 	"fitbyte/internal/models"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-// ActivityHandler handles activity-related endpoints
 type ActivityHandler struct {
-
-	// In a real application, you would inject a service or repository here
-	// activityService services.ActivityService
+	db *gorm.DB
 }
 
-// NewActivityHandler creates a new activity handler
-func NewActivityHandler() *ActivityHandler {
-	return &ActivityHandler{}
+func NewActivityHandler(db *gorm.DB) *ActivityHandler {
+	return &ActivityHandler{db: db}
 }
 
-// GetUsers returns a list of users
-func (h *ActivityHandler) GetUsers(c *gin.Context) {
-	// Parse pagination parameters
+// GetActivities returns a list of activities
+func (h *ActivityHandler) GetActivities(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset := (page - 1) * limit
 
-	actId1 := 1
-	actId2 := 2
-	acttype1 := "Activity 1"
-	acttype2 := "Activity 2"
-	durationInM1 := 20
-	durationInM2 := 30
-	calories1 := 100
-	calories2 := 200
-	users := []models.Activity{
-		{
-			BaseEntity: models.BaseEntity{
-				ID:        actId1,
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
-			},
-			ActivityType:      acttype1,
-			DurationInMinutes: durationInM1,
-			CaloriesBurned:    calories1,
-		},
-		{
-			BaseEntity: models.BaseEntity{
-				ID:        actId2,
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
-			},
-			ActivityType:      acttype2,
-			DurationInMinutes: durationInM2,
-			CaloriesBurned:    calories2,
-		},
+	var activities []models.Activity
+	var total int64
+
+	h.db.Model(&models.Activity{}).Count(&total)
+
+	if err := h.db.Limit(limit).Offset(offset).Find(&activities).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Success: false,
+			Error:   err.Error(),
+			Code:    http.StatusInternalServerError,
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, models.PaginatedResponse{
 		Success: true,
-		Message: "Users retrieved successfully",
-		Data:    users,
+		Message: "Activities retrieved successfully",
+		Data:    activities,
 		Pagination: models.Pagination{
 			Page:       page,
 			Limit:      limit,
-			Total:      int64(len(users)),
-			TotalPages: 1,
+			Total:      total,
+			TotalPages: int((total + int64(limit) - 1) / int64(limit)),
 		},
 	})
 }
 
-// GetUser returns a specific user by ID
-func (h *ActivityHandler) GetUser(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 32)
+// GetActivity returns a specific activity by ID
+func (h *ActivityHandler) GetActivity(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Success: false,
-			Error:   "Invalid user ID",
+			Error:   "Invalid activity ID",
 			Code:    http.StatusBadRequest,
 		})
 		return
 	}
 
-	actId1 := id
-	acttype1 := "Activity 1"
-	durationInM1 := 20
-	calories1 := 100
-	activity := models.Activity{
-		BaseEntity: models.BaseEntity{
-			ID:        int(actId1),
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-		},
-		ActivityType:      acttype1,
-		DurationInMinutes: durationInM1,
-		CaloriesBurned:    calories1,
+	var activity models.Activity
+	if err := h.db.First(&activity, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, models.ErrorResponse{
+			Success: false,
+			Error:   "Activity not found",
+			Code:    http.StatusNotFound,
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "User retrieved successfully",
+		Message: "Activity retrieved successfully",
 		Data:    activity,
 	})
 }
