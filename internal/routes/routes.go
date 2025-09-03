@@ -27,6 +27,12 @@ func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, user
 			users.PUT("/:id", userHandler.UpdateUser)
 			users.DELETE("/:id", userHandler.DeleteUser)
 		}
+
+		activity := v1.Group("/activity")
+		{
+			activity.GET("/", userHandler.GetUsers)
+			activity.GET("/:id", userHandler.GetUser)
+		}
 	}
 
 	// Root route

@@ -7,7 +7,7 @@ import (
 )
 
 type BaseEntity struct {
-	ID        uint64    `gorm:"primaryKey;autoIncrement" json:"id"`
+	ID        int       `gorm:"primaryKey;autoIncrement" json:"id"`
 	IsActive  bool      `gorm:"column:is_active;default:true" json:"is_active,omitempty"`
 	CreatedAt time.Time `gorm:"column:created_at" json:"created_at,omitempty"`
 	UpdatedAt time.Time `gorm:"column:updated_at" json:"updated_at,omitempty"`
