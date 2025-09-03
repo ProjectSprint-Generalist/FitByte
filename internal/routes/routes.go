@@ -2,34 +2,47 @@ package routes
 
 import (
 	"fitbyte/internal/handlers"
+	"fitbyte/internal/middleware"
+	"fitbyte/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-// SetupRoutes configures all the routes for the application
-func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, userHandler *handlers.UserHandler) {
-	// API version 1
+func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, userHandler *handlers.UserHandler, authHandler *handlers.AuthHandler, jwtService *services.JWTService) {
 	v1 := router.Group("/api/v1")
 	{
-		// Health check routes
 		health := v1.Group("/health")
 		{
 			health.GET("/", healthHandler.Health)
 			health.GET("/ready", healthHandler.Ready)
 		}
 
-		// User routes
-		users := v1.Group("/users")
+		auth := v1.Group("/auth")
 		{
-			users.GET("/", userHandler.GetUsers)
-			users.GET("/:id", userHandler.GetUser)
-			users.POST("/", userHandler.CreateUser)
-			users.PUT("/:id", userHandler.UpdateUser)
-			users.DELETE("/:id", userHandler.DeleteUser)
+			auth.POST("/register", authHandler.Register)
+			auth.POST("/login", authHandler.Login)
+			auth.POST("/refresh", authHandler.RefreshToken)
+		}
+
+		protected := v1.Group("/")
+		protected.Use(middleware.AuthMiddleware(jwtService))
+		{
+			profile := protected.Group("/profile")
+			{
+				profile.GET("/", authHandler.Profile)
+			}
+
+			users := protected.Group("/users")
+			{
+				users.GET("/", userHandler.GetUsers)
+				users.GET("/:id", userHandler.GetUser)
+				users.POST("/", userHandler.CreateUser)
+				users.PUT("/:id", userHandler.UpdateUser)
+				users.DELETE("/:id", userHandler.DeleteUser)
+			}
 		}
 	}
 
-	// Root route
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "Welcome to FitByte API",

@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Logger returns a gin.HandlerFunc for logging requests
+
 func Logger() gin.HandlerFunc {
 	return logger.SetLogger(
 		logger.WithLogger(func(c *gin.Context, l zerolog.Logger) zerolog.Logger {

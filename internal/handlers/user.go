@@ -5,71 +5,67 @@ import (
 	"strconv"
 
 	"fitbyte/internal/models"
+	"fitbyte/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-// UserHandler handles user-related endpoints
+
 type UserHandler struct {
-	// In a real application, you would inject a service or repository here
-	// userService services.UserService
+	userService *services.UserService
 }
 
-// NewUserHandler creates a new user handler
-func NewUserHandler() *UserHandler {
-	return &UserHandler{}
+
+func NewUserHandler(userService *services.UserService) *UserHandler {
+	return &UserHandler{
+		userService: userService,
+	}
 }
 
-// GetUsers returns a list of users
+
 func (h *UserHandler) GetUsers(c *gin.Context) {
-	// Parse pagination parameters
+
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 
-	// In a real application, you would fetch users from a database
-	name1 := "John Doe"
-	name2 := "Jane Smith"
-	preference1 := "metric"
-	weightUnit1 := "kg"
-	heightUnit1 := "cm"
-	weight1 := 75.5
-	height1 := 180.0
-	imageURI1 := "https://example.com/image1.jpg"
-	
-	users := []models.UserResponse{
-		{
-			ID:         1,
-			Email:      "john@example.com",
-			Name:       &name1,
-			Preference: &preference1,
-			WeightUnit: &weightUnit1,
-			HeightUnit: &heightUnit1,
-			Weight:     &weight1,
-			Height:     &height1,
-			ImageURI:   &imageURI1,
-		},
-		{
-			ID:    2,
-			Email: "jane@example.com",
-			Name:  &name2,
-			// Other fields are nil (null in JSON)
-		},
+
+	if page < 1 {
+		page = 1
 	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	users, total, err := h.userService.GetUsers(page, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Success: false,
+			Error:   "Failed to retrieve users",
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	userResponses := make([]models.UserResponse, len(users))
+	for i, user := range users {
+		userResponses[i] = h.userService.ToUserResponse(&user)
+	}
+
+	totalPages := int((total + int64(limit) - 1) / int64(limit))
 
 	c.JSON(http.StatusOK, models.PaginatedResponse{
 		Success: true,
 		Message: "Users retrieved successfully",
-		Data:    users,
+		Data:    userResponses,
 		Pagination: models.Pagination{
 			Page:       page,
 			Limit:      limit,
-			Total:      int64(len(users)),
-			TotalPages: 1,
+			Total:      total,
+			TotalPages: totalPages,
 		},
 	})
 }
 
-// GetUser returns a specific user by ID
 func (h *UserHandler) GetUser(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
@@ -81,35 +77,30 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 		return
 	}
 
-	// In a real application, you would fetch the user from a database
-	name := "John Doe"
-	preference := "metric"
-	weightUnit := "kg"
-	heightUnit := "cm"
-	weight := 75.5
-	height := 180.0
-	imageURI := "https://example.com/image1.jpg"
-	
-	user := models.UserResponse{
-		ID:         uint(id),
-		Email:      "john@example.com",
-		Name:       &name,
-		Preference: &preference,
-		WeightUnit: &weightUnit,
-		HeightUnit: &heightUnit,
-		Weight:     &weight,
-		Height:     &height,
-		ImageURI:   &imageURI,
+	user, err := h.userService.GetUserByID(uint(id))
+	if err != nil {
+		statusCode := http.StatusNotFound
+		if err.Error() != "user not found" {
+			statusCode = http.StatusInternalServerError
+		}
+		c.JSON(statusCode, models.ErrorResponse{
+			Success: false,
+			Error:   err.Error(),
+			Code:    statusCode,
+		})
+		return
 	}
+
+
+	userResponse := h.userService.ToUserResponse(user)
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
 		Message: "User retrieved successfully",
-		Data:    user,
+		Data:    userResponse,
 	})
 }
 
-// CreateUser creates a new user
 func (h *UserHandler) CreateUser(c *gin.Context) {
 	var req models.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -121,10 +112,9 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		return
 	}
 
-	// In a real application, you would create the user in a database
-	user := models.UserResponse{
-		ID:         1,
+	registerReq := &models.RegisterRequest{
 		Email:      req.Email,
+		Password:   "defaultPasswor",
 		Name:       req.Name,
 		Preference: req.Preference,
 		WeightUnit: req.WeightUnit,
@@ -134,14 +124,29 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		ImageURI:   req.ImageURI,
 	}
 
+	user, err := h.userService.CreateUser(registerReq)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "user with this email already exists" {
+			statusCode = http.StatusConflict
+		}
+		c.JSON(statusCode, models.ErrorResponse{
+			Success: false,
+			Error:   err.Error(),
+			Code:    statusCode,
+		})
+		return
+	}
+
+	userResponse := h.userService.ToUserResponse(user)
+
 	c.JSON(http.StatusCreated, models.APIResponse{
 		Success: true,
 		Message: "User created successfully",
-		Data:    user,
+		Data:    userResponse,
 	})
 }
 
-// UpdateUser updates an existing user
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
@@ -163,61 +168,29 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	// In a real application, you would update the user in a database
-	name := "John Doe"
-	preference := "metric"
-	weightUnit := "kg"
-	heightUnit := "cm"
-	weight := 75.5
-	height := 180.0
-	imageURI := "https://example.com/image1.jpg"
-	
-	user := models.UserResponse{
-		ID:         uint(id),
-		Email:      "john@example.com",
-		Name:       &name,
-		Preference: &preference,
-		WeightUnit: &weightUnit,
-		HeightUnit: &heightUnit,
-		Weight:     &weight,
-		Height:     &height,
-		ImageURI:   &imageURI,
+	user, err := h.userService.UpdateUser(uint(id), &req)
+	if err != nil {
+		statusCode := http.StatusNotFound
+		if err.Error() != "user not found" {
+			statusCode = http.StatusInternalServerError
+		}
+		c.JSON(statusCode, models.ErrorResponse{
+			Success: false,
+			Error:   err.Error(),
+			Code:    statusCode,
+		})
+		return
 	}
 
-	// Apply updates
-	if req.Email != nil {
-		user.Email = *req.Email
-	}
-	if req.Name != nil {
-		user.Name = req.Name
-	}
-	if req.Preference != nil {
-		user.Preference = req.Preference
-	}
-	if req.WeightUnit != nil {
-		user.WeightUnit = req.WeightUnit
-	}
-	if req.HeightUnit != nil {
-		user.HeightUnit = req.HeightUnit
-	}
-	if req.Weight != nil {
-		user.Weight = req.Weight
-	}
-	if req.Height != nil {
-		user.Height = req.Height
-	}
-	if req.ImageURI != nil {
-		user.ImageURI = req.ImageURI
-	}
+	userResponse := h.userService.ToUserResponse(user)
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
 		Message: "User updated successfully",
-		Data:    user,
+		Data:    userResponse,
 	})
 }
 
-// DeleteUser deletes a user
 func (h *UserHandler) DeleteUser(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
@@ -229,8 +202,14 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	// In a real application, you would delete the user from a database
-	_ = id // Use the ID to delete the user
+	if err := h.userService.DeleteUser(uint(id)); err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Success: false,
+			Error:   "Failed to delete user",
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
