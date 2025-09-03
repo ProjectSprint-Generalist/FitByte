@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"fitbyte/internal/config"
+	"fitbyte/internal/database"
 	"fitbyte/internal/handlers"
 	"fitbyte/internal/middleware"
 	"fitbyte/internal/routes"
@@ -21,6 +22,9 @@ func main() {
 
 	// Load configuration
 	cfg := config.Load()
+	dbCfg := config.LoadDBConfig()
+
+	database.ConnectDB(dbCfg.DSN())
 
 	// Set Gin mode
 	if cfg.Environment == "production" {
@@ -38,9 +42,10 @@ func main() {
 	// Initialize handlers
 	healthHandler := handlers.NewHealthHandler()
 	userHandler := handlers.NewUserHandler()
+	activityHandler := handlers.NewActivityHandler(database.DB)
 
 	// Setup routes
-	routes.SetupRoutes(router, healthHandler, userHandler)
+	routes.SetupRoutes(router, healthHandler, userHandler, activityHandler)
 
 	// Get port from environment or use default
 	port := os.Getenv("PORT")
