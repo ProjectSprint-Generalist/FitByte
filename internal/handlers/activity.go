@@ -79,3 +79,71 @@ func (h *ActivityHandler) GetActivity(c *gin.Context) {
 		Data:    activity,
 	})
 }
+
+func (h *ActivityHandler) UpdateActivity(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id")) // Convert :id parameter to integer
+	if err != nil {
+		// Return a 400 Bad Request response if the ID is invalid
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Success: false,
+			Error:   "Invalid activity ID",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	var req models.UpdateActivityRequest
+	if err := c.ShouldBindJSON(&req); err != nil { // If the request body is invalid (invalid JSON)
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Success: false,
+			Error:   err.Error(),
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	var activity models.Activity
+	if err := h.db.First(&activity, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, models.ErrorResponse{
+			Success: false,
+			Error:   "Activity not found",
+			Code:    http.StatusNotFound,
+		})
+		return
+	}
+
+	if req.ActivityType == nil && req.DurationInMinutes == nil && req.CaloriesBurned == nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Success: false,
+			Error:   "Invalid request body",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	// Apply updates
+	if req.ActivityType != nil {
+		activity.ActivityType = *req.ActivityType
+	}
+	if req.DurationInMinutes != nil {
+		activity.DurationInMinutes = *req.DurationInMinutes
+	}
+	if req.CaloriesBurned != nil {
+		activity.CaloriesBurned = *req.CaloriesBurned
+	}
+
+	if err := h.db.Save(&activity).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Success: false,
+			Error:   err.Error(),
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Message: "Activity updated successfully",
+		Data:    activity,
+	})
+}

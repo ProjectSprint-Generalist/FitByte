@@ -32,6 +32,7 @@ func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, user
 		{
 			activity.GET("/", activityHandler.GetActivities)
 			activity.GET("/:id", activityHandler.GetActivity)
+			activity.PUT("/:id", activityHandler.UpdateActivity)
 		}
 	}
 
