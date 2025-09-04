@@ -7,7 +7,7 @@ import (
 )
 
 // SetupRoutes configures all the routes for the application
-func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, userHandler *handlers.UserHandler) {
+func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, userHandler *handlers.UserHandler, activityHandler *handlers.ActivityHandler) {
 	// API version 1
 	v1 := router.Group("/api/v1")
 	{
@@ -26,6 +26,12 @@ func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, user
 			users.POST("/", userHandler.CreateUser)
 			users.PUT("/:id", userHandler.UpdateUser)
 			users.DELETE("/:id", userHandler.DeleteUser)
+		}
+
+		// Activity routes
+		activity := v1.Group("/activity")
+		{
+			activity.POST("/", activityHandler.CreateActivity)
 		}
 	}
 
