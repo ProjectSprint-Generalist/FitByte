@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"fitbyte/internal/models"
 
@@ -18,18 +19,55 @@ func NewActivityHandler(db *gorm.DB) *ActivityHandler {
 	return &ActivityHandler{db: db}
 }
 
-// GetActivities returns a list of activities
 func (h *ActivityHandler) GetActivities(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset := (page - 1) * limit
+	limitStr := c.DefaultQuery("limit", "5")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 5
+	}
+
+	offsetStr := c.DefaultQuery("offset", "0")
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil || offset < 0 {
+		offset = 0
+	}
+
+	query := h.db.Model(&models.Activity{})
+
+	if activityType := c.Query("activityType"); activityType != "" {
+		query = query.Where("activity_type = ?", activityType)
+	}
+
+	if doneAtFromStr := c.Query("doneAtFrom"); doneAtFromStr != "" {
+		if doneAtFrom, err := time.Parse(time.RFC3339, doneAtFromStr); err == nil {
+			query = query.Where("done_at >= ?", doneAtFrom)
+		}
+	}
+
+	if doneAtToStr := c.Query("doneAtTo"); doneAtToStr != "" {
+		if doneAtTo, err := time.Parse(time.RFC3339, doneAtToStr); err == nil {
+			query = query.Where("done_at <= ?", doneAtTo)
+		}
+	}
+
+	if caloriesMinStr := c.Query("caloriesBurnedMin"); caloriesMinStr != "" {
+		if caloriesMin, err := strconv.Atoi(caloriesMinStr); err == nil {
+			query = query.Where("calories_burned >= ?", caloriesMin)
+		}
+	}
+
+	if caloriesMaxStr := c.Query("caloriesBurnedMax"); caloriesMaxStr != "" {
+		if caloriesMax, err := strconv.Atoi(caloriesMaxStr); err == nil {
+			query = query.Where("calories_burned <= ?", caloriesMax)
+		}
+	}
 
 	var activities []models.Activity
 	var total int64
 
-	h.db.Model(&models.Activity{}).Count(&total)
+	query.Count(&total)
 
-	if err := h.db.Limit(limit).Offset(offset).Find(&activities).Error; err != nil {
+	if err := query.Limit(limit).Offset(offset).Find(&activities).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Success: false,
 			Error:   err.Error(),
@@ -38,15 +76,20 @@ func (h *ActivityHandler) GetActivities(c *gin.Context) {
 		return
 	}
 
+	totalPages := int((total + int64(limit) - 1) / int64(limit))
+	if totalPages == 0 {
+		totalPages = 1
+	}
+
 	c.JSON(http.StatusOK, models.PaginatedResponse{
 		Success: true,
 		Message: "Activities retrieved successfully",
 		Data:    activities,
 		Pagination: models.Pagination{
-			Page:       page,
+			Page:       (offset / limit) + 1,
 			Limit:      limit,
 			Total:      total,
-			TotalPages: int((total + int64(limit) - 1) / int64(limit)),
+			TotalPages: totalPages,
 		},
 	})
 }
