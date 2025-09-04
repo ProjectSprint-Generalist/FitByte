@@ -4,17 +4,13 @@ import (
 	"errors"
 	"fitbyte/internal/middleware"
 	"fitbyte/internal/models"
+	"fitbyte/internal/utils"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
 )
-
-// RegisterHandler manage user registration
-type RegisterHandler struct {
-	db *gorm.DB
-}
 
 // NewRegisterHandler initializes RegisterHandler with the given DB
 func NewRegisterHandler(db *gorm.DB) *RegisterHandler {
@@ -27,7 +23,7 @@ func NewRegisterHandler(db *gorm.DB) *RegisterHandler {
 func (h *RegisterHandler) Register(context *gin.Context) {
 
 	// Bind JSON to Register
-	var inputUser models.RegisterInput
+	var inputUser models.InputUser
 	if err := context.ShouldBindJSON(&inputUser); err != nil {
 		response := models.ErrorResponse{
 			Success: false,
@@ -39,7 +35,7 @@ func (h *RegisterHandler) Register(context *gin.Context) {
 	}
 
 	// Validate email and password input
-	if err := inputUser.Validate(); err != nil {
+	if err := utils.Validate(&inputUser); err != nil {
 		response := models.ErrorResponse{
 			Success: false,
 			Error:   err.Error(),
@@ -50,7 +46,7 @@ func (h *RegisterHandler) Register(context *gin.Context) {
 	}
 
 	// Hash password
-	hashedPassword, err := inputUser.HashPassword()
+	hashedPassword, err := utils.HashPassword(inputUser.Password)
 	if err != nil {
 		response := models.ErrorResponse{
 			Success: false,
@@ -93,8 +89,8 @@ func (h *RegisterHandler) Register(context *gin.Context) {
 	if err != nil {
 		response := models.ErrorResponse{
 			Success: false,
-			Error: "Failed to generate token",
-			Code: http.StatusInternalServerError,
+			Error:   "Failed to generate token",
+			Code:    http.StatusInternalServerError,
 		}
 		context.JSON(http.StatusInternalServerError, response)
 		return
