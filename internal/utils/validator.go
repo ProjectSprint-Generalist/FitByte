@@ -1,20 +1,13 @@
-package models
+package utils
 
 import (
 	"errors"
+	"fitbyte/internal/models"
 	"regexp"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
-// Data Transfer Object (DTO)
-type RegisterInput struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8,max=32"`
-}
-
 // Validator
-func (input *RegisterInput) Validate() error {
+func Validate(input *models.InputUser) error {
 
 	// Email Validation
 	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
@@ -37,15 +30,4 @@ func (input *RegisterInput) Validate() error {
 		return errors.New("password must contain at least one number, uppercase letter, lowercase letter, and special character")
 	}
 	return nil
-}
-
-// Hash Password
-func (input *RegisterInput) HashPassword() (string, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
-
-	if err != nil {
-		return "", err
-	}
-
-	return string(hashedPassword), nil
 }
