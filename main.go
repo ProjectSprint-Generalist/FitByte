@@ -44,9 +44,10 @@ func main() {
 	healthHandler := handlers.NewHealthHandler()
 	userHandler := handlers.NewUserHandler()
 	registerHandler := handlers.NewRegisterHandler(database.DB)
+	loginHandler := handlers.NewLoginHandler(database.DB)
 
 	// Setup routes
-	routes.SetupRoutes(router, healthHandler, userHandler, registerHandler)
+	routes.SetupRoutes(router, healthHandler, userHandler, registerHandler, loginHandler)
 
 	// Get port from environment or use default
 	port := os.Getenv("PORT")
