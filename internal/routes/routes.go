@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, userHandler *handlers.UserHandler, authHandler *handlers.AuthHandler, jwtService *services.JWTService) {
+func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, userHandler *handlers.UserHandler, authHandler *handlers.AuthHandler, activityHandler *handlers.ActivityHandler, jwtService *services.JWTService) {
 	v1 := router.Group("/api/v1")
 	{
 		health := v1.Group("/health")
@@ -39,6 +39,17 @@ func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, user
 				users.POST("/", userHandler.CreateUser)
 				users.PUT("/:id", userHandler.UpdateUser)
 				users.DELETE("/:id", userHandler.DeleteUser)
+			}
+
+			activities := protected.Group("/activities")
+			{
+				activities.GET("/", activityHandler.GetUserActivities)
+				activities.GET("/all", activityHandler.GetActivities)
+				activities.GET("/:id", activityHandler.GetActivity)
+				activities.GET("/activity/:activityId", activityHandler.GetActivityByActivityID)
+				activities.POST("/", activityHandler.CreateActivity)
+				activities.PUT("/:id", activityHandler.UpdateActivity)
+				activities.DELETE("/:id", activityHandler.DeleteActivity)
 			}
 		}
 	}

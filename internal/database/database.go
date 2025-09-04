@@ -40,7 +40,7 @@ func Migrate() error {
 		return fmt.Errorf("database connection not initialized")
 	}
 
-	err := DB.AutoMigrate(&models.User{})
+	err := DB.AutoMigrate(&models.User{}, &models.Activity{})
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)
 	}

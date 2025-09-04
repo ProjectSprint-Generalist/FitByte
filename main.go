@@ -41,13 +41,15 @@ func main() {
 	router.Use(middleware.CORS())
 
 	userService := services.NewUserService()
+	activityService := services.NewActivityService()
 	jwtService := services.NewJWTService(cfg)
 
 	healthHandler := handlers.NewHealthHandler()
 	userHandler := handlers.NewUserHandler(userService)
 	authHandler := handlers.NewAuthHandler(userService, jwtService)
+	activityHandler := handlers.NewActivityHandler(activityService)
 
-	routes.SetupRoutes(router, healthHandler, userHandler, authHandler, jwtService)
+	routes.SetupRoutes(router, healthHandler, userHandler, authHandler, activityHandler, jwtService)
 
 	port := os.Getenv("PORT")
 	if port == "" {
