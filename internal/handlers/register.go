@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"errors"
-	"fitbyte/internal/auth"
+	"fitbyte/internal/middleware"
 	"fitbyte/internal/models"
 	"fmt"
 	"net/http"
@@ -90,7 +90,7 @@ func (h *RegisterHandler) Register(context *gin.Context) {
 	}
 
 	// Generate JWT Token
-	token, err := auth.GenerateToken(user)
+	token, err := middleware.GenerateToken(user)
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
