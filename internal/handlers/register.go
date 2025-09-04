@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fitbyte/internal/middleware"
 	"fitbyte/internal/models"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -92,11 +91,12 @@ func (h *RegisterHandler) Register(context *gin.Context) {
 	// Generate JWT Token
 	token, err := middleware.GenerateToken(user)
 	if err != nil {
-		context.JSON(http.StatusInternalServerError, models.APIResponse{
+		response := models.ErrorResponse{
 			Success: false,
-			Message: fmt.Sprintf("Failed to generate token: %v", err),
-			// Message: "Failed to generate token",
-		})
+			Error: "Failed to generate token",
+			Code: http.StatusInternalServerError,
+		}
+		context.JSON(http.StatusInternalServerError, response)
 		return
 	}
 
