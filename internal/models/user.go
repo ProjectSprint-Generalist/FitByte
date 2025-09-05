@@ -21,12 +21,13 @@ const (
 type User struct {
 	ID         uint      `json:"id" gorm:"primaryKey"`
 	Email      string    `json:"email" gorm:"uniqueIndex;not null"`
+	Password   string    `json:"-" gorm:"not null"`
 	Name       *string   `json:"name" gorm:"type:varchar(255)"`
-	Preference *string   `json:"preference" gorm:"type:varchar(255)"`
-	WeightUnit *string   `json:"weightUnit" gorm:"type:varchar(10)"`
-	HeightUnit *string   `json:"heightUnit" gorm:"type:varchar(10)"`
-	Weight     *float64  `json:"weight" gorm:"type:decimal(5,2)"`
-	Height     *float64  `json:"height" gorm:"type:decimal(5,2)"`
+	Preference *string   `json:"preference" gorm:"type:varchar(20);check:preference IN ('CARDIO', 'WEIGHT')"`
+	WeightUnit *string   `json:"weightUnit" gorm:"type:varchar(10);check:weight_unit IN ('KG', 'LBS')"`
+	HeightUnit *string   `json:"heightUnit" gorm:"type:varchar(10);check:height_unit IN ('CM', 'INCH')"`
+	Weight     *float64  `json:"weight" gorm:"type:decimal(6,2)"`
+	Height     *float64  `json:"height" gorm:"type:decimal(6,2)"`
 	ImageURI   *string   `json:"imageUri" gorm:"type:text"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`

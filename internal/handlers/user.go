@@ -21,7 +21,6 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 	}
 }
 
-
 // GetUser returns current user profile (GET /v1/user)
 func (h *UserHandler) GetUser(c *gin.Context) {
 	// Get user ID from auth middleware context
@@ -47,6 +46,12 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+
+// CreateUser creates a new user
+func (h *UserHandler) CreateUser(c *gin.Context) {
+	var req models.CreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Success: false,
 			Error:   "Database error",
 			Code:    http.StatusInternalServerError,
