@@ -2,7 +2,6 @@ package routes
 
 import (
 	"fitbyte/internal/handlers"
-	"fitbyte/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,8 +24,6 @@ func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, user
 
 		// User profile routes (auth required)
 		userAuth := v1.Group("/user")
-		userAuth.Use(middleware.DummyAuth()) // Use dummy auth middleware
-		// userAuth.Use(middleware.Auth())
 		{
 			userAuth.GET("/", userHandler.GetUser)      // GET /v1/user
 			userAuth.PATCH("/", userHandler.UpdateUser) // PATCH /v1/user
