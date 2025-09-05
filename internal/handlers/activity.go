@@ -5,11 +5,14 @@ import (
 	"strconv"
 	"time"
 
+	"fitbyte/internal/database"
 	"fitbyte/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// CreateActivity creates a new activity
 
 type ActivityHandler struct {
 	db *gorm.DB
@@ -17,6 +20,53 @@ type ActivityHandler struct {
 
 func NewActivityHandler(db *gorm.DB) *ActivityHandler {
 	return &ActivityHandler{db: db}
+}
+
+func (h *ActivityHandler) CreateActivity(c *gin.Context) {
+	var req models.CreateActivityRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		if !models.IsValidActivityType(string(req.ActivityType)) {
+			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+				Success: false,
+				Error:   "Invalid activity type. Must be one of: Walking, Yoga, Stretching, Cycling, Swimming, Dancing, Hiking, Running, HIIT, JumpRope",
+			})
+
+			// Validate duration
+			if req.DurationInMinutes < 1 {
+				c.JSON(http.StatusBadRequest, models.ErrorResponse{
+					Success: false,
+					Error:   "Duration must be at least 1 minute",
+					Code:    http.StatusBadRequest,
+				})
+				return
+			}
+
+			// Create activity
+			activity := models.Activity{
+				ActivityType:      req.ActivityType,
+				DoneAt:            req.DoneAt,
+				DurationInMinutes: req.DurationInMinutes,
+				CreatedAt:         time.Now(),
+				UpdatedAt:         time.Now(),
+			}
+
+			// Calculate calories burned
+			activity.CaloriesBurned = activity.CalculateCalories()
+
+			// Save to database
+			db := database.GetDB()
+			if err := db.Create(&activity).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+					Success: false,
+					Error:   "Failed to create activity",
+				})
+			}
+			// Return response
+			response := activity.ToResponse()
+			c.JSON(http.StatusCreated, response)
+		}
+	}
 }
 
 func (h *ActivityHandler) GetActivities(c *gin.Context) {

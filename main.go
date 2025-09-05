@@ -30,6 +30,16 @@ func main() {
 	database.ConnectDB()
 	database.Migrate()
 
+	// Connect to database
+	if err := database.Connect(cfg.DatabaseURL); err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+
+	// Run database migrations
+	if err := database.Migrate(); err != nil {
+		log.Fatal("Failed to run database migrations:", err)
+	}
+
 	// Set Gin mode
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
