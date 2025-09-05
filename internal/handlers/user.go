@@ -24,7 +24,7 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 // GetUser returns current user profile (GET /v1/user)
 func (h *UserHandler) GetUser(c *gin.Context) {
 	// Get user ID from auth middleware context
-	userID, exists := c.Get("userID")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 			Success: false,
@@ -46,12 +46,6 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-
-// CreateUser creates a new user
-func (h *UserHandler) CreateUser(c *gin.Context) {
-	var req models.CreateUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Success: false,
 			Error:   "Database error",
 			Code:    http.StatusInternalServerError,
@@ -82,7 +76,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 // UpdateUser updates user profile (PATCH /v1/user)
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	// Get user ID from auth middleware context
-	userID, exists := c.Get("userID")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 			Success: false,
@@ -98,16 +92,6 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Success: false,
 			Error:   "Invalid request body: " + err.Error(),
-			Code:    http.StatusBadRequest,
-		})
-		return
-	}
-
-	// Validate request
-	if err := req.Validate(); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Success: false,
-			Error:   err.Error(),
 			Code:    http.StatusBadRequest,
 		})
 		return
