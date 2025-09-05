@@ -45,6 +45,7 @@ func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, user
 			{
 				activities.GET("/", activityHandler.GetUserActivities)
 				activities.GET("/all", activityHandler.GetActivities)
+				activities.GET("/types", activityHandler.GetActivityTypes)
 				activities.GET("/:id", activityHandler.GetActivity)
 				activities.GET("/activity/:activityId", activityHandler.GetActivityByActivityID)
 				activities.POST("/", activityHandler.CreateActivity)

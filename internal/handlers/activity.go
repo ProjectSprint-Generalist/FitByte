@@ -187,6 +187,16 @@ func (h *ActivityHandler) CreateActivity(c *gin.Context) {
 
 	activity, err := h.activityService.CreateActivity(userID.(uint), &req)
 	if err != nil {
+		if err.Error() == "validation error: invalid activity type" || 
+		   err.Error() == "invalid activity type" {
+			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+				Success: false,
+				Error:   err.Error(),
+				Code:    http.StatusBadRequest,
+			})
+			return
+		}
+		
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Success: false,
 			Error:   err.Error(),
@@ -225,6 +235,16 @@ func (h *ActivityHandler) UpdateActivity(c *gin.Context) {
 
 	activity, err := h.activityService.UpdateActivity(uint(id), &req)
 	if err != nil {
+		if err.Error() == "validation error: invalid activity type" || 
+		   err.Error() == "invalid activity type" {
+			c.JSON(http.StatusBadRequest, models.ErrorResponse{
+				Success: false,
+				Error:   err.Error(),
+				Code:    http.StatusBadRequest,
+			})
+			return
+		}
+		
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Success: false,
 			Error:   err.Error(),
@@ -264,5 +284,17 @@ func (h *ActivityHandler) DeleteActivity(c *gin.Context) {
 		Success: true,
 		Message: "Activity deleted successfully",
 		Data:    nil,
+	})
+}
+
+func (h *ActivityHandler) GetActivityTypes(c *gin.Context) {
+	activityTypes := h.activityService.GetActivityTypes()
+	
+	c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Message: "Activity types retrieved successfully",
+		Data: gin.H{
+			"activityTypes": activityTypes,
+		},
 	})
 }

@@ -21,12 +21,26 @@ func NewActivityService() *ActivityService {
 }
 
 func (s *ActivityService) CreateActivity(userID uint, req *models.CreateActivityRequest) (*models.Activity, error) {
+	if err := req.Validate(); err != nil {
+		return nil, fmt.Errorf("validation error: %w", err)
+	}
+
+	activityType, err := models.ParseActivityType(req.ActivityType)
+	if err != nil {
+		return nil, fmt.Errorf("invalid activity type: %w", err)
+	}
+
+	caloriesBurned := *req.CaloriesBurned
+	if caloriesBurned == 0 {
+		caloriesBurned = activityType.GetCaloriesPerMinute() * req.DurationInMinutes
+	}
+
 	activity := &models.Activity{
-		ActivityID:        req.ActivityID,
-		ActivityType:      req.ActivityType,
+		ActivityID:        *req.ActivityID,
+		ActivityType:      activityType,
 		DoneAt:            req.DoneAt,
 		DurationInMinutes: req.DurationInMinutes,
-		CaloriesBurned:    req.CaloriesBurned,
+		CaloriesBurned:    caloriesBurned,
 		UserID:            userID,
 	}
 
@@ -96,6 +110,10 @@ func (s *ActivityService) GetAllActivities(page, limit int) ([]models.Activity, 
 }
 
 func (s *ActivityService) UpdateActivity(id uint, req *models.UpdateActivityRequest) (*models.Activity, error) {
+	if err := req.Validate(); err != nil {
+		return nil, fmt.Errorf("validation error: %w", err)
+	}
+
 	var activity models.Activity
 	if err := s.db.Preload("User").First(&activity, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -108,7 +126,11 @@ func (s *ActivityService) UpdateActivity(id uint, req *models.UpdateActivityRequ
 		activity.ActivityID = *req.ActivityID
 	}
 	if req.ActivityType != nil {
-		activity.ActivityType = *req.ActivityType
+		activityType, err := models.ParseActivityType(*req.ActivityType)
+		if err != nil {
+			return nil, fmt.Errorf("invalid activity type: %w", err)
+		}
+		activity.ActivityType = activityType
 	}
 	if req.DoneAt != nil {
 		activity.DoneAt = *req.DoneAt
@@ -118,6 +140,10 @@ func (s *ActivityService) UpdateActivity(id uint, req *models.UpdateActivityRequ
 	}
 	if req.CaloriesBurned != nil {
 		activity.CaloriesBurned = *req.CaloriesBurned
+	}
+
+	if (req.ActivityType != nil || req.DurationInMinutes != nil) && req.CaloriesBurned == nil {
+		activity.CaloriesBurned = activity.ActivityType.GetCaloriesPerMinute() * activity.DurationInMinutes
 	}
 
 	if err := s.db.Save(&activity).Error; err != nil {
@@ -185,4 +211,8 @@ func (s *ActivityService) ToActivityResponse(activity *models.Activity) models.A
 		CreatedAt:         activity.CreatedAt,
 		UpdatedAt:         activity.UpdatedAt,
 	}
+}
+
+func (s *ActivityService) GetActivityTypes() []models.ActivityTypeInfo {
+	return models.GetAllActivityTypes()
 }
