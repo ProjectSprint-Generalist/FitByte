@@ -22,6 +22,13 @@ func main() {
 
 	// Load configuration
 	cfg := config.Load()
+	dbCfg := config.LoadDBConfig()
+
+	database.ConnectDB(dbCfg.DSN())
+
+	// Initialize Database
+	database.ConnectDB()
+	database.Migrate()
 
 	// Connect to database
 	if err := database.Connect(cfg.DatabaseURL); err != nil {
@@ -49,10 +56,12 @@ func main() {
 	// Initialize handlers
 	healthHandler := handlers.NewHealthHandler()
 	userHandler := handlers.NewUserHandler()
-	activityHandler := handlers.NewActivityHandler()
+  activityHandler := handlers.NewActivityHandler(database.DB)
+	registerHandler := handlers.NewRegisterHandler(database.DB)
+	loginHandler := handlers.NewLoginHandler(database.DB)
 
 	// Setup routes
-	routes.SetupRoutes(router, healthHandler, userHandler, activityHandler)
+	routes.SetupRoutes(router, healthHandler, userHandler, activityHandler, registerHandler, loginHandler)
 
 	// Get port from environment or use default
 	port := os.Getenv("PORT")

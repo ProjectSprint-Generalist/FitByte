@@ -1,9 +1,5 @@
 package models
 
-import (
-	"time"
-)
-
 // ActivityType represents the enum for activity types
 type ActivityType string
 
@@ -19,17 +15,6 @@ const (
 	ActivityTypeHIIT       ActivityType = "HIIT"
 	ActivityTypeJumpRope   ActivityType = "JumpRope"
 )
-
-// Activity represents an activity in the system
-type Activity struct {
-	ID                uint         `json:"activityId" gorm:"primaryKey;autoIncrement;type:serial"`
-	ActivityType      ActivityType `json:"activityType" gorm:"type:varchar(50);not null"`
-	DoneAt            time.Time    `json:"doneAt" gorm:"not null"`
-	DurationInMinutes int          `json:"durationInMinutes" gorm:"not null"`
-	CaloriesBurned    int          `json:"caloriesBurned" gorm:"not null"`
-	CreatedAt         time.Time    `json:"createdAt"`
-	UpdatedAt         time.Time    `json:"updatedAt"`
-}
 
 // CreateActivityRequest represents the request payload for creating an activity
 type CreateActivityRequest struct {
@@ -106,4 +91,19 @@ func IsValidActivityType(activityType string) bool {
 		}
 	}
 	return false
+}
+
+type Activity struct {
+	BaseEntity
+
+	ActivityType      string    `gorm:"column:activity_type;type:varchar(100);not null" json:"activity_type"`
+	DurationInMinutes int       `gorm:"column:duration_in_minutes;not null" json:"duration_in_minutes"`
+	CaloriesBurned    int       `gorm:"column:calories_burned;not null" json:"calories_burned"`
+	DoneAt            time.Time `gorm:"column:done_at;not null" json:"done_at"`
+}
+
+type UpdateActivityRequest struct {
+	ActivityType      *string `gorm:"column:activity_type;type:varchar(100);not null" json:"activity_type"`
+	DurationInMinutes *int    `gorm:"column:duration_in_minutes;not null" json:"duration_in_minutes"`
+	CaloriesBurned    *int    `gorm:"column:calories_burned;not null" json:"calories_burned"`
 }
