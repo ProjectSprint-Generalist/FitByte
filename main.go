@@ -26,6 +26,10 @@ func main() {
 
 	database.ConnectDB(dbCfg.DSN())
 
+	// Initialize Database
+	database.ConnectDB()
+	database.Migrate()
+
 	// Set Gin mode
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -42,10 +46,12 @@ func main() {
 	// Initialize handlers
 	healthHandler := handlers.NewHealthHandler()
 	userHandler := handlers.NewUserHandler()
-	activityHandler := handlers.NewActivityHandler(database.DB)
+  activityHandler := handlers.NewActivityHandler(database.DB)
+	registerHandler := handlers.NewRegisterHandler(database.DB)
+	loginHandler := handlers.NewLoginHandler(database.DB)
 
 	// Setup routes
-	routes.SetupRoutes(router, healthHandler, userHandler, activityHandler)
+	routes.SetupRoutes(router, healthHandler, userHandler, activityHandler, registerHandler, loginHandler)
 
 	// Get port from environment or use default
 	port := os.Getenv("PORT")
