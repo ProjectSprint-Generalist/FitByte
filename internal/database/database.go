@@ -2,6 +2,8 @@ package database
 
 import (
 	"log"
+	"os"
+	"time"
 
 	"fitbyte/internal/models"
 
@@ -14,10 +16,17 @@ var DB *gorm.DB
 // Connect establishes a connection to the PostgreSQL database
 func Connect(databaseURL string) error {
 	var err error
-	DB, err = gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
+	db, err = gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
 	if err != nil {
 		return err
 	}
+
+	// Connection pool
+	sqlDB, _ := db.DB()
+	sqlDB.SetMaxOpenConns(300)
+	sqlDB.SetMaxIdleConns(50)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+	sqlDB.SetConnMaxIdleTime(time.Minute * 10)
 
 	log.Println("Connected to database successfully")
 	return nil
