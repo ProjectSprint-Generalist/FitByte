@@ -53,7 +53,7 @@ func main() {
 	router.Use(middleware.Recovery())
 	router.Use(middleware.CORS())
 
-	// Initialize handlers
+	// Initialize handlers with database connection
 	healthHandler := handlers.NewHealthHandler()
 	userHandler := handlers.NewUserHandler()
   activityHandler := handlers.NewActivityHandler(database.DB)
