@@ -24,12 +24,6 @@ func main() {
 	cfg := config.Load()
 	dbCfg := config.LoadDBConfig()
 
-	database.ConnectDB(dbCfg.DSN())
-
-	// Initialize Database
-	database.ConnectDB()
-	database.Migrate()
-
 	// Connect to database
 	if err := database.Connect(cfg.DatabaseURL); err != nil {
 		log.Fatal("Failed to connect to database:", err)
@@ -56,7 +50,7 @@ func main() {
 	// Initialize handlers with database connection
 	healthHandler := handlers.NewHealthHandler()
 	userHandler := handlers.NewUserHandler()
-  activityHandler := handlers.NewActivityHandler(database.DB)
+	activityHandler := handlers.NewActivityHandler(database.DB)
 	registerHandler := handlers.NewRegisterHandler(database.DB)
 	loginHandler := handlers.NewLoginHandler(database.DB)
 
