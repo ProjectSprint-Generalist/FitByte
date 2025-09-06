@@ -96,12 +96,9 @@ func (h *RegisterHandler) Register(context *gin.Context) {
 		return
 	}
 
-	context.JSON(http.StatusCreated, models.APIResponse{
-		Success: true,
-		Message: "User registered successfully",
-		Data: gin.H{
-			"email": user.Email,
-			"token": token,
-		},
-	})
+	context.JSON(http.StatusCreated, gin.H{
+		"email": user.Email,
+		"token": token,
+	},
+	)
 }
