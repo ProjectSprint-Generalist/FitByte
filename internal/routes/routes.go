@@ -25,14 +25,14 @@ func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, user
 
 		// User profile routes (auth required)
 		userAuth := v1.Group("/user")
-		userAuth.Use(middleware.DummyAuth()) // Use dummy auth middleware
-		// userAuth.Use(middleware.Auth())
+		userAuth.Use(middleware.IsAuthorized())
 		{
-			userAuth.GET("/", userHandler.GetUser)      // GET /v1/user
-			userAuth.PATCH("/", userHandler.UpdateUser) // PATCH /v1/user
+			userAuth.GET("/", userHandler.GetUser)      
+			userAuth.PATCH("/", userHandler.UpdateUser) 
 		}
 
 		activity := v1.Group("/activity")
+		activity.Use(middleware.IsAuthorized())
 		{
 			activity.GET("/", activityHandler.GetActivities)
 			activity.GET("/:id", activityHandler.GetActivity)

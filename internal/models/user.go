@@ -31,6 +31,8 @@ type User struct {
 	ImageURI   *string   `json:"imageUri" gorm:"type:text"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
+
+	Activities []Activity `json:"activities,omitempty" gorm:"foreignKey:UserID"`
 }
 
 // CreateUserRequest represents the request payload for creating a user

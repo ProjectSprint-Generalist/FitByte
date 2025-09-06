@@ -44,8 +44,13 @@ func GenerateToken(user *models.User) (string, error) {
 
 // Parse Token
 func ParseToken(tokenString string) (*models.JWTClaim, error) {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		return nil, fmt.Errorf("JWT_SECRET not set")
+	}
+
 	token, err := jwt.ParseWithClaims(tokenString, &models.JWTClaim{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte("my_secret_key"), nil
+		return []byte(secret), nil
 	})
 
 	if err != nil {

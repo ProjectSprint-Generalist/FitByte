@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-  "os"
+  	"os"
 	"log"
 
 	"fitbyte/internal/models"
@@ -10,6 +10,9 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
+
+// Config holds configuration values for the application
+
 
 func Load() *Config {
 	cfg := &Config{
@@ -87,13 +90,4 @@ func getEnv(key, defaultValue string) string {
 // Helper function to create string pointer
 func stringPtr(s string) *string {
 	return &s
-}
-
-// Config holds all configuration for our application
-type Config struct {
-	Environment string
-	Port        string
-	DatabaseURL string
-	JWTSecret   string
-	DB          *gorm.DB
 }

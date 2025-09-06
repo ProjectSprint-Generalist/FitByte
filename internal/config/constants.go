@@ -1,12 +1,13 @@
 package config
 
-// this will be used to store all the hard coded value or magic number in code
+import "gorm.io/gorm"
 
 type Config struct {
 	Environment string
 	Port        string
 	DatabaseURL string
 	JWTSecret   string
+	DB          *gorm.DB
 }
 
 type DBConfig struct {
