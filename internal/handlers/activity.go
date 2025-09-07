@@ -321,3 +321,50 @@ func (h *ActivityHandler) UpdateActivity(c *gin.Context) {
 		Data:    activity.ToResponse(),
 	})
 }
+
+func (h *ActivityHandler) DeleteActivity(c *gin.Context) {
+	// Get user ID from JWT token
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			Success: false,
+			Error:   "User not authenticated",
+			Code:    http.StatusUnauthorized,
+		})
+		return
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Success: false,
+			Error:   "Invalid activityId",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	var activity models.Activity
+	if err := h.db.Where("id = ? AND user_id = ?", id, userID).First(&activity).Error; err != nil {
+		c.JSON(http.StatusNotFound, models.ErrorResponse{
+			Success: false,
+			Error:   "Activity not found",
+			Code:    http.StatusNotFound,
+		})
+		return
+	}
+
+	if err := h.db.Delete(&activity).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Success: false,
+			Error:   "Failed to delete activity",
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Message: "Activity deleted successfully",
+	})
+}

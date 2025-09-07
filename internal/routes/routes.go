@@ -37,7 +37,7 @@ func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, user
 			activity.GET("/", activityHandler.GetActivities)
 			activity.GET("/:id", activityHandler.GetActivity)
 			activity.POST("/", activityHandler.CreateActivity)
-			activity.PUT("/:id", activityHandler.UpdateActivity)
+			activity.DELETE("/:id", activityHandler.DeleteActivity)
 		}
 	}
 

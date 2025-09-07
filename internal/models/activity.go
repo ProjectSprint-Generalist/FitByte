@@ -112,3 +112,7 @@ type UpdateActivityRequest struct {
 	DoneAt            *time.Time `json:"doneAt,omitempty"`
 	DurationInMinutes *int       `json:"durationInMinutes,omitempty" binding:"omitempty,min=1"`
 }
+
+type DeleteActivityRequest struct {
+	ActivityID string `json:"activityId" binding:"required"`
+}
