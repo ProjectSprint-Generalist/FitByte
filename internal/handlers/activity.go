@@ -64,7 +64,7 @@ func (h *ActivityHandler) CreateActivity(c *gin.Context) {
 	// Create activity
 	activity := models.Activity{
 		UserID:            userID.(uint), // Set user ID from JWT token
-		ActivityType:      string(req.ActivityType),
+		ActivityType:      req.ActivityType,
 		DoneAt:            req.DoneAt,
 		DurationInMinutes: req.DurationInMinutes,
 	}
@@ -287,7 +287,7 @@ func (h *ActivityHandler) UpdateActivity(c *gin.Context) {
 			})
 			return
 		}
-		activity.ActivityType = *req.ActivityType
+		activity.ActivityType = models.ActivityType(*req.ActivityType)
 	}
 	if req.DurationInMinutes != nil {
 		if *req.DurationInMinutes < 1 {
