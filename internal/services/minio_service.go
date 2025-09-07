@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"io"
 	"mime/multipart"
 	"path/filepath"
 	"strings"
