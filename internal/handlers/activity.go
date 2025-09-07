@@ -196,7 +196,7 @@ func (h *ActivityHandler) GetActivity(c *gin.Context) {
 		return
 	}
 
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := strconv.Atoi(c.Param("activityId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Success: false,
@@ -236,7 +236,7 @@ func (h *ActivityHandler) UpdateActivity(c *gin.Context) {
 		return
 	}
 
-	id, err := strconv.Atoi(c.Param("id")) // Convert :id parameter to integer
+	id, err := strconv.Atoi(c.Param("activityId")) // Convert :activityId parameter to integer
 	if err != nil {
 		// Return a 400 Bad Request response if the ID is invalid
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
@@ -319,5 +319,52 @@ func (h *ActivityHandler) UpdateActivity(c *gin.Context) {
 		Success: true,
 		Message: "Activity updated successfully",
 		Data:    activity.ToResponse(),
+	})
+}
+
+func (h *ActivityHandler) DeleteActivity(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			Success: false,
+			Error:   "User not authenticated",
+			Code:    http.StatusUnauthorized,
+		})
+		return
+	}
+
+	id, err := strconv.Atoi(c.Param("activityId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Success: false,
+			Error:   "Invalid activity ID",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	var activity models.Activity
+
+	if err := h.db.Where("id = ? AND user_id = ?", id, userID).First(&activity).Error; err != nil {
+		c.JSON(http.StatusNotFound, models.ErrorResponse{
+			Success: false,
+			Error:   "Activity not found",
+			Code:    http.StatusNotFound,
+		})
+		return
+	}
+
+	if err := h.db.Delete(&activity).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Success: false,
+			Error:   "Failed to delete activity",
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Message: "Activity deleted successfully",
 	})
 }

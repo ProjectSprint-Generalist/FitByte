@@ -35,9 +35,10 @@ func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, user
 		activity.Use(middleware.IsAuthorized())
 		{
 			activity.GET("/", activityHandler.GetActivities)
-			activity.GET("/:id", activityHandler.GetActivity)
+			activity.GET("/:activityId", activityHandler.GetActivity)
 			activity.POST("/", activityHandler.CreateActivity)
-			activity.PUT("/:id", activityHandler.UpdateActivity)
+			activity.PATCH("/:activityId", activityHandler.UpdateActivity)
+			activity.DELETE("/:activityId", activityHandler.DeleteActivity)
 		}
 
 		// File upload routes (auth required)
