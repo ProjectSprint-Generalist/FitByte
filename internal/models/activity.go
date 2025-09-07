@@ -35,6 +35,7 @@ type ActivityResponse struct {
 	DurationInMinutes int       `json:"durationInMinutes"`
 	CaloriesBurned    int       `json:"caloriesBurned"`
 	CreatedAt         time.Time `json:"createdAt"`
+	UpdatedAt         time.Time `json:"updatedAt"`
 }
 
 // CaloriesPerMinute defines the calories burned per minute for each activity type
@@ -69,6 +70,7 @@ func (a *Activity) ToResponse() ActivityResponse {
 		DurationInMinutes: a.DurationInMinutes,
 		CaloriesBurned:    a.CaloriesBurned,
 		CreatedAt:         a.CreatedAt,
+		UpdatedAt:         a.UpdatedAt,
 	}
 }
 

@@ -299,11 +299,14 @@ func (h *ActivityHandler) UpdateActivity(c *gin.Context) {
 			return
 		}
 		activity.DurationInMinutes = *req.DurationInMinutes
-		// Recalculate calories when duration changes
-		activity.CaloriesBurned = activity.CalculateCalories()
 	}
 	if req.DoneAt != nil {
 		activity.DoneAt = *req.DoneAt
+	}
+
+	// Recalculate calories if either activity type or duration changed
+	if req.ActivityType != nil || req.DurationInMinutes != nil {
+		activity.CaloriesBurned = activity.CalculateCalories()
 	}
 
 	if err := h.db.Save(&activity).Error; err != nil {
