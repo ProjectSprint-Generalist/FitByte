@@ -1,0 +1,306 @@
+# Production values for FitByte
+# This file contains production-ready configurations
+
+# Global configuration
+global:
+  imageRegistry: "your-registry.com"
+  imagePullSecrets:
+    - name: registry-secret
+
+# FitByte application configuration
+app:
+  name: fitbyte
+  replicaCount: 5
+  
+  image:
+    repository: your-registry.com/fitbyte
+    tag: "v1.0.0"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+    metricsPort: 9090
+    metricsTargetPort: 9090
+  
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/client-max-body-size: "100m"
+      nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    hosts:
+      - host: api.fitbyte.com
+        paths:
+          - path: /api
+            pathType: Prefix
+          - path: /metrics
+            pathType: Prefix
+    tls:
+      - secretName: fitbyte-tls
+        hosts:
+          - api.fitbyte.com
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  
+  # Production environment variables
+  env:
+    - name: ENVIRONMENT
+      value: "production"
+    - name: SERVER_HOST
+      value: "0.0.0.0"
+    - name: SERVER_PORT
+      value: "8080"
+    - name: JWT_EXPIRY
+      value: "24h"
+  
+  # Production health checks
+  livenessProbe:
+    httpGet:
+      path: /api/v1/health
+      port: 8080
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /api/v1/health/ready
+      port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Database configuration
+database:
+  enabled: true
+  type: postgresql
+  
+  postgresql:
+    enabled: true
+    auth:
+      postgresPassword: "CHANGE_ME_PRODUCTION_PASSWORD"
+      database: "fitbyte"
+      username: "fitbyte"
+    primary:
+      persistence:
+        enabled: true
+        size: 100Gi
+        storageClass: "fast-ssd"
+      resources:
+        limits:
+          cpu: 2000m
+          memory: 4Gi
+        requests:
+          cpu: 1000m
+          memory: 2Gi
+      configuration: |
+        max_connections = 200
+        shared_buffers = 256MB
+        effective_cache_size = 1GB
+        maintenance_work_mem = 64MB
+        checkpoint_completion_target = 0.9
+        wal_buffers = 16MB
+        default_statistics_target = 100
+    service:
+      type: ClusterIP
+      port: 5432
+
+# MinIO object storage configuration
+minio:
+  enabled: true
+  auth:
+    rootUser: "fitbyte_admin"
+    rootPassword: "CHANGE_ME_MINIO_PASSWORD"
+  defaultBuckets: "fitbyte-uploads,fitbyte-backups"
+  persistence:
+    enabled: true
+    size: 500Gi
+    storageClass: "fast-ssd"
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+  service:
+    type: ClusterIP
+    port: 9000
+    consolePort: 9001
+
+# Prometheus monitoring configuration
+prometheus:
+  enabled: true
+  server:
+    persistentVolume:
+      enabled: true
+      size: 50Gi
+      storageClass: "fast-ssd"
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+    service:
+      type: ClusterIP
+      port: 9090
+    retention: "30d"
+  alertmanager:
+    enabled: true
+    persistentVolume:
+      enabled: true
+      size: 10Gi
+      storageClass: "fast-ssd"
+  kubeStateMetrics:
+    enabled: true
+  nodeExporter:
+    enabled: true
+
+# Grafana configuration
+grafana:
+  enabled: true
+  adminPassword: "CHANGE_ME_GRAFANA_PASSWORD"
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: "fast-ssd"
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 200m
+      memory: 512Mi
+  service:
+    type: ClusterIP
+    port: 3000
+  ingress:
+    enabled: true
+    className: "nginx"
+    hosts:
+      - host: grafana.fitbyte.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.fitbyte.com
+
+# Secrets configuration
+secrets:
+  create: true
+  data:
+    jwt-secret: "CHANGE_ME_JWT_SECRET_PRODUCTION"
+    db-password: "CHANGE_ME_PRODUCTION_PASSWORD"
+    minio-secret: "CHANGE_ME_MINIO_PASSWORD"
+
+# ConfigMap configuration
+configMap:
+  create: true
+  data:
+    DB_HOST: "{{ include \"fitbyte.postgresql.fullname\" . }}-primary"
+    DB_PORT: "5432"
+    DB_NAME: "fitbyte"
+    DB_USER: "fitbyte"
+    DB_SSL_MODE: "require"
+    MINIO_ENDPOINT: "{{ include \"fitbyte.minio.fullname\" . }}:9000"
+    MINIO_ACCESS_KEY: "fitbyte_admin"
+    MINIO_USE_SSL: "true"
+    MINIO_BUCKET: "fitbyte-uploads"
+    PROMETHEUS_ENABLED: "true"
+    METRICS_PORT: "9090"
+
+# ServiceMonitor for Prometheus
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+  labels:
+    release: prometheus
+  annotations: {}
+
+# PodDisruptionBudget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# NetworkPolicy
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 9090
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: fitbyte
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 9000
+
+# PodSecurityPolicy
+podSecurityPolicy:
+  enabled: true
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::ACCOUNT-ID:role/fitbyte-role"
+  name: ""
+
+# Security Context
+podSecurityContext:
+  fsGroup: 1001
+  runAsNonRoot: true
+  runAsUser: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1001
