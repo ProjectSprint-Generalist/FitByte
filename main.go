@@ -9,6 +9,7 @@ import (
 	"fitbyte/internal/handlers"
 	"fitbyte/internal/middleware"
 	"fitbyte/internal/routes"
+	"fitbyte/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -46,15 +47,22 @@ func main() {
 	router.Use(middleware.Recovery())
 	router.Use(middleware.CORS())
 
+	// Initialize MinIO service
+	minioService, err := services.NewMinIOService(cfg, database.DB)
+	if err != nil {
+		log.Fatal("Failed to initialize MinIO service:", err)
+	}
+
 	// Initialize handlers with database connection
 	healthHandler := handlers.NewHealthHandler()
 	userHandler := handlers.NewUserHandler(database.DB)
 	activityHandler := handlers.NewActivityHandler(database.DB)
 	registerHandler := handlers.NewRegisterHandler(database.DB)
 	loginHandler := handlers.NewLoginHandler(database.DB)
+	fileHandler := handlers.NewFileHandler(minioService)
 
 	// Setup routes
-	routes.SetupRoutes(router, healthHandler, userHandler, registerHandler, loginHandler, activityHandler)
+	routes.SetupRoutes(router, healthHandler, userHandler, registerHandler, loginHandler, activityHandler, fileHandler)
 
 	// Get port from environment or use default
 	port := os.Getenv("PORT")
