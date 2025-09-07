@@ -1,234 +1,322 @@
-# FitByte Kubernetes + Helm Deployment Guide
+# FitByte Deployment Guide
 
-This guide shows you how to deploy your FitByte application using Kubernetes and Helm.
+This guide covers different deployment options for the FitByte API application.
 
-## 🚀 Quick Start
+## 🐳 Docker Deployment
 
-### 1. Prerequisites
+### Prerequisites
+- Docker and Docker Compose installed
+- At least 4GB RAM available
+- Ports 8080, 5432, 9000, 9001, 6379 available
 
-- Kubernetes cluster (1.19+)
-- Helm 3.0+
-- kubectl configured
-- Docker (for building images)
+### Quick Start
 
-### 2. Build and Push Docker Image
+1. **Clone and setup**
+   ```bash
+   git clone <your-repo-url>
+   cd FitByte
+   # The deployment script will create .env automatically
+   ```
+
+2. **Deploy with Docker Compose**
+   ```bash
+   # Development deployment (includes all services)
+   ./scripts/docker-deploy.sh dev
+   
+   # Production deployment (app only)
+   ./scripts/docker-deploy.sh prod
+   ```
+
+3. **Access the application**
+   - API: http://localhost:8080
+   - MinIO Console: http://localhost:9001
+   - PostgreSQL: localhost:5432
+
+### Manual Docker Commands
 
 ```bash
 # Build the image
 docker build -t fitbyte:latest .
 
-# Tag for your registry
-docker tag fitbyte:latest your-registry.com/fitbyte:latest
+# Run with external database
+docker run -d \
+  --name fitbyte-api \
+  -p 8080:8080 \
+  -e DATABASE_URL="postgres://user:pass@host:5432/db" \
+  -e JWT_SECRET="your-secret" \
+  fitbyte:latest
 
-# Push to registry
-docker push your-registry.com/fitbyte:latest
+# Run with docker-compose
+docker-compose up -d
 ```
 
-### 3. Deploy with Helm
+## ☸️ Kubernetes Deployment
+
+### Prerequisites
+- Kubernetes cluster (1.20+)
+- Helm 3.x installed
+- kubectl configured
+
+### Deploy with Helm
+
+1. **Add required repositories**
+   ```bash
+   helm repo add bitnami https://charts.bitnami.com/bitnami
+   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+   helm repo update
+   ```
+
+2. **Deploy to development**
+   ```bash
+   # Install dependencies
+   helm install postgresql bitnami/postgresql \
+     --set auth.postgresPassword=postgres \
+     --set auth.database=fitbyte
+   
+   helm install minio bitnami/minio \
+     --set auth.rootUser=minioadmin \
+     --set auth.rootPassword=minioadmin123
+   
+   # Deploy FitByte
+   helm install fitbyte ./helm/fitbyte
+   ```
+
+3. **Deploy to production**
+   ```bash
+   # Create secrets first
+   kubectl create secret generic fitbyte-secrets \
+     --from-literal=jwt-secret="your-production-secret" \
+     --from-literal=database-url="postgres://user:pass@external-db:5432/fitbyte" \
+     --from-literal=minio-access-key="your-access-key" \
+     --from-literal=minio-secret-key="your-secret-key"
+   
+   # Deploy with production values
+   helm install fitbyte ./helm/fitbyte -f ./helm/fitbyte/values-production.yaml
+   ```
+
+### Verify Deployment
 
 ```bash
-# Navigate to helm directory
-cd helm
+# Check pods
+kubectl get pods -l app=fitbyte
 
-# Deploy with default values
-./deploy.sh
+# Check services
+kubectl get svc
 
-# Or deploy with custom values
-helm install fitbyte ./fitbyte -f custom-values.yaml
+# Check ingress
+kubectl get ingress
+
+# View logs
+kubectl logs -l app=fitbyte -f
 ```
-
-## 📋 What Gets Deployed
-
-### Core Application
-- **FitByte API** - Your Go application (3 replicas)
-- **PostgreSQL** - Database with persistent storage
-- **MinIO** - Object storage for file uploads
-
-### Monitoring Stack
-- **Prometheus** - Metrics collection and alerting
-- **Grafana** - Dashboards and visualization
-- **ServiceMonitor** - Automatic metrics scraping
-
-### Networking
-- **Ingress** - External access with SSL/TLS
-- **Services** - Internal service discovery
-- **ConfigMaps & Secrets** - Configuration management
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
-The application automatically configures:
-- `DATABASE_URL` - PostgreSQL connection
-- `JWT_SECRET` - JWT signing key
-- `MINIO_ENDPOINT` - Object storage endpoint
-- `PROMETHEUS_ENABLED` - Metrics collection
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `ENVIRONMENT` | Application environment | `development` | No |
+| `PORT` | Server port | `8080` | No |
+| `DATABASE_URL` | PostgreSQL connection string | - | Yes |
+| `JWT_SECRET` | JWT signing secret | - | Yes |
+| `MINIO_ENDPOINT` | MinIO server endpoint | `localhost:9000` | Yes |
+| `MINIO_ACCESS_KEY` | MinIO access key | - | Yes |
+| `MINIO_SECRET_KEY` | MinIO secret key | - | Yes |
+| `MINIO_USE_SSL` | Use SSL for MinIO | `false` | No |
+| `MINIO_BUCKET_NAME` | MinIO bucket name | `fitbyte-files` | No |
 
-### Customization
+### Database Setup
 
-Edit `helm/fitbyte/values.yaml` to customize:
-- Resource limits
-- Replica count
-- Storage sizes
-- Ingress configuration
-- Monitoring settings
+1. **PostgreSQL**
+   ```sql
+   CREATE DATABASE fitbyte_db;
+   CREATE USER fitbyte_user WITH PASSWORD 'your_password';
+   GRANT ALL PRIVILEGES ON DATABASE fitbyte_db TO fitbyte_user;
+   ```
+
+2. **MinIO Bucket**
+   ```bash
+   # Create bucket using MinIO client
+   mc mb minio/fitbyte-files
+   mc policy set public minio/fitbyte-files
+   ```
 
 ## 📊 Monitoring
 
-### Access Dashboards
+### Health Checks
 
-```bash
-# Grafana
-kubectl port-forward svc/fitbyte-grafana 3000:3000 -n fitbyte
-# Open http://localhost:3000 (admin/admin)
+- **Liveness**: `GET /v1/health`
+- **Readiness**: `GET /v1/health/ready`
+- **Metrics**: `GET /metrics` (Prometheus format)
 
-# Prometheus
-kubectl port-forward svc/fitbyte-prometheus-server 9090:9090 -n fitbyte
-# Open http://localhost:9090
-```
+### Prometheus Metrics
 
-### Metrics Available
+The application exposes metrics on port 9090:
+- HTTP request metrics
+- Database connection metrics
+- Custom business metrics
 
-- HTTP request rates and latencies
-- Database operation metrics
-- File upload statistics
-- Memory and CPU usage
-- Custom application metrics
+### Grafana Dashboard
+
+Access Grafana at `http://grafana.fitbyte.local` (default credentials: admin/admin)
 
 ## 🔒 Security
 
+### Production Security Checklist
+
+- [ ] Change all default passwords
+- [ ] Use strong JWT secrets (32+ characters)
+- [ ] Enable SSL/TLS for all services
+- [ ] Configure proper network policies
+- [ ] Use secrets management (Vault, AWS Secrets Manager)
+- [ ] Enable audit logging
+- [ ] Regular security updates
+
 ### Secrets Management
 
-Sensitive data is stored in Kubernetes secrets:
-- JWT signing keys
-- Database passwords
-- MinIO credentials
+```bash
+# Kubernetes secrets
+kubectl create secret generic fitbyte-secrets \
+  --from-literal=jwt-secret="$(openssl rand -base64 32)" \
+  --from-literal=database-url="postgres://..." \
+  --from-literal=minio-access-key="..." \
+  --from-literal=minio-secret-key="..."
 
-### Network Policies
+# Docker secrets
+echo "your-secret" | docker secret create jwt-secret -
+```
 
-Optional network policies restrict traffic between components.
+## 🚀 CI/CD Pipeline
+
+### GitHub Actions Example
+
+```yaml
+name: Deploy FitByte
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Docker image
+        run: docker build -t fitbyte:${{ github.sha }} .
+      
+      - name: Deploy to Kubernetes
+        run: |
+          helm upgrade --install fitbyte ./helm/fitbyte \
+            --set app.image.tag=${{ github.sha }} \
+            --set app.image.repository=your-registry.com/fitbyte
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **Database Connection Failed**
+   ```bash
+   # Check database connectivity
+   kubectl exec -it <pod-name> -- nc -zv postgres-service 5432
+   
+   # Check database logs
+   kubectl logs <postgres-pod>
+   ```
+
+2. **MinIO Connection Failed**
+   ```bash
+   # Check MinIO service
+   kubectl get svc minio
+   
+   # Test MinIO connectivity
+   kubectl exec -it <pod-name> -- nc -zv minio-service 9000
+   ```
+
+3. **Application Won't Start**
+   ```bash
+   # Check application logs
+   kubectl logs <fitbyte-pod> -f
+   
+   # Check pod status
+   kubectl describe pod <fitbyte-pod>
+   ```
+
+### Useful Commands
+
+```bash
+# View all resources
+kubectl get all -l app=fitbyte
+
+# Port forward for local testing
+kubectl port-forward svc/fitbyte-service 8080:8080
+
+# Scale application
+kubectl scale deployment fitbyte --replicas=5
+
+# Rolling update
+kubectl rollout restart deployment/fitbyte
+
+# Check rollout status
+kubectl rollout status deployment/fitbyte
+```
 
 ## 📈 Scaling
 
 ### Horizontal Scaling
 
-```yaml
-# In values.yaml
-autoscaling:
-  enabled: true
-  minReplicas: 3
-  maxReplicas: 20
-  targetCPUUtilizationPercentage: 70
+```bash
+# Scale using kubectl
+kubectl scale deployment fitbyte --replicas=10
+
+# Scale using Helm
+helm upgrade fitbyte ./helm/fitbyte --set app.replicaCount=10
+
+# Enable HPA
+helm upgrade fitbyte ./helm/fitbyte --set autoscaling.enabled=true
 ```
 
 ### Vertical Scaling
 
 ```yaml
-# In values.yaml
-app:
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 200m
-      memory: 256Mi
+# Update resources in values.yaml
+resources:
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+  requests:
+    cpu: 1000m
+    memory: 1Gi
 ```
 
-## 🛠️ Troubleshooting
+## 🔄 Updates and Maintenance
 
-### Common Commands
+### Rolling Updates
 
 ```bash
-# Check deployment status
-kubectl get pods -n fitbyte
+# Update image
+helm upgrade fitbyte ./helm/fitbyte --set app.image.tag=v1.1.0
 
-# View logs
-kubectl logs -f deployment/fitbyte -n fitbyte
-
-# Check services
-kubectl get svc -n fitbyte
-
-# Check ingress
-kubectl get ingress -n fitbyte
-
-# Port forward for testing
-kubectl port-forward svc/fitbyte 8080:8080 -n fitbyte
+# Rollback if needed
+helm rollback fitbyte 1
 ```
 
-### Health Checks
+### Database Migrations
 
-```bash
-# API health
-curl http://localhost:8080/api/v1/health
+The application automatically runs migrations on startup. For production:
 
-# Metrics endpoint
-curl http://localhost:8080/metrics
-```
+1. Backup database before updates
+2. Test migrations in staging
+3. Use blue-green deployment for zero-downtime updates
 
-## 🔄 Updates
+## 📞 Support
 
-### Upgrade Application
-
-```bash
-# Update image tag
-helm upgrade fitbyte ./fitbyte --set app.image.tag=v1.1.0
-
-# Or with values file
-helm upgrade fitbyte ./fitbyte -f new-values.yaml
-```
-
-### Rollback
-
-```bash
-# List releases
-helm list -n fitbyte
-
-# Rollback to previous version
-helm rollback fitbyte 1 -n fitbyte
-```
-
-## 🗑️ Cleanup
-
-```bash
-# Uninstall everything
-helm uninstall fitbyte -n fitbyte
-
-# Or using the script
-./deploy.sh --uninstall
-```
-
-## 📚 Production Considerations
-
-### Security
-- Change all default passwords
-- Use proper SSL certificates
-- Enable network policies
-- Regular security updates
-
-### Performance
-- Configure resource limits appropriately
-- Use fast storage classes
-- Enable horizontal pod autoscaling
-- Monitor and tune database settings
-
-### Backup
-- Regular database backups
-- MinIO data replication
-- Configuration backup
-- Disaster recovery plan
-
-## 🆘 Support
-
-For issues and questions:
-1. Check the logs: `kubectl logs -f deployment/fitbyte -n fitbyte`
-2. Verify configuration: `kubectl describe deployment fitbyte -n fitbyte`
-3. Check resource usage: `kubectl top pods -n fitbyte`
-4. Review the Helm chart documentation in `helm/README.md`
-
-## 📖 Additional Resources
-
-- [Kubernetes Documentation](https://kubernetes.io/docs/)
-- [Helm Documentation](https://helm.sh/docs/)
-- [Prometheus Documentation](https://prometheus.io/docs/)
-- [Grafana Documentation](https://grafana.com/docs/)
+For deployment issues:
+1. Check the logs: `kubectl logs -l app=fitbyte`
+2. Verify configuration: `kubectl describe pod <pod-name>`
+3. Check resource usage: `kubectl top pods`
+4. Review this documentation
+5. Create an issue in the repository
