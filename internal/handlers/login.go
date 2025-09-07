@@ -78,12 +78,9 @@ func (h *LoginHandler) Login(context *gin.Context) {
 	}
 
 	// Login successfully
-	context.JSON(http.StatusOK, models.APIResponse{
-		Success: true,
-		Message: "User login successfully",
-		Data: gin.H{
-			"email": user.Email,
-			"token": token,
-		},
-	})
+	context.JSON(http.StatusOK, gin.H{
+		"email": user.Email,
+		"token": token,
+	},
+	)
 }

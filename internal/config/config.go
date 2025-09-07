@@ -12,7 +12,22 @@ import (
 )
 
 // Config holds configuration values for the application
+type Config struct {
+	Environment string
+	Port        string
+	DatabaseURL string
+	JWTSecret   string
+	DB          *gorm.DB
+	MinIO       MinIOConfig
+}
 
+type MinIOConfig struct {
+	Endpoint        string
+	AccessKeyID     string
+	SecretAccessKey string
+	UseSSL          bool
+	BucketName      string
+}
 
 func Load() *Config {
 	cfg := &Config{
@@ -20,6 +35,13 @@ func Load() *Config {
 		Port:        getEnv("PORT", "8080"),
 		DatabaseURL: getEnv("DATABASE_URL", ""),
 		JWTSecret:   getEnv("JWT_SECRET", "your-secret-key"),
+		MinIO: MinIOConfig{
+			Endpoint:        getEnv("MINIO_ENDPOINT", "localhost:9000"),
+			AccessKeyID:     getEnv("MINIO_ACCESS_KEY", "minioadmin"),
+			SecretAccessKey: getEnv("MINIO_SECRET_KEY", "minioadmin"),
+			UseSSL:          getEnv("MINIO_USE_SSL", "false") == "true",
+			BucketName:      getEnv("MINIO_BUCKET_NAME", "fitbyte-files"),
+		},
 	}
 
 	// Initialize database
@@ -40,7 +62,7 @@ func (c *Config) initDatabase() {
 	}
 
 	// Auto migrate the schema
-	err = db.AutoMigrate(&models.User{})
+	err = db.AutoMigrate(&models.User{}, &models.FileUpload{})
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
