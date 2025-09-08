@@ -7,10 +7,11 @@ import (
 )
 
 type BaseEntity struct {
-	ID        int       `gorm:"primaryKey;autoIncrement" json:"id"`
-	IsActive  bool      `gorm:"column:is_active;default:true" json:"is_active,omitempty"`
-	CreatedAt time.Time `gorm:"column:created_at" json:"created_at,omitempty"`
-	UpdatedAt time.Time `gorm:"column:updated_at" json:"updated_at,omitempty"`
+	ID        int            `gorm:"primaryKey;autoIncrement" json:"id"`
+	IsActive  bool           `gorm:"column:is_active;default:true" json:"is_active,omitempty"`
+	CreatedAt time.Time      `gorm:"column:created_at" json:"created_at,omitempty"`
+	UpdatedAt time.Time      `gorm:"column:updated_at" json:"updated_at,omitempty"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 func (base *BaseEntity) BeforeCreate(tx *gorm.DB) (err error) {

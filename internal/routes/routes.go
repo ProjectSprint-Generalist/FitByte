@@ -37,9 +37,8 @@ func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, user
 			activity.GET("/", activityHandler.GetActivities)
 			activity.GET("/:activityId", activityHandler.GetActivity)
 			activity.POST("/", activityHandler.CreateActivity)
-			activity.PATCH("/:activityId", activityHandler.UpdateActivity)
-			activity.DELETE("/:activityId", activityHandler.DeleteActivity)
-		}
+			activity.PATCH("/:id", activityHandler.UpdateActivity)
+			activity.DELETE("/:id", activityHandler.DeleteActivity)
 
 		// File upload routes (auth required)
 		file := v1.Group("/file")

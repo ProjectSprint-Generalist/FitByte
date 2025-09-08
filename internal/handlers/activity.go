@@ -299,11 +299,14 @@ func (h *ActivityHandler) UpdateActivity(c *gin.Context) {
 			return
 		}
 		activity.DurationInMinutes = *req.DurationInMinutes
-		// Recalculate calories when duration changes
-		activity.CaloriesBurned = activity.CalculateCalories()
 	}
 	if req.DoneAt != nil {
 		activity.DoneAt = *req.DoneAt
+	}
+
+	// Recalculate calories if either activity type or duration changed
+	if req.ActivityType != nil || req.DurationInMinutes != nil {
+		activity.CaloriesBurned = activity.CalculateCalories()
 	}
 
 	if err := h.db.Save(&activity).Error; err != nil {
@@ -333,18 +336,17 @@ func (h *ActivityHandler) DeleteActivity(c *gin.Context) {
 		return
 	}
 
-	id, err := strconv.Atoi(c.Param("activityId"))
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Success: false,
-			Error:   "Invalid activity ID",
+			Error:   "Invalid activityId",
 			Code:    http.StatusBadRequest,
 		})
 		return
 	}
 
 	var activity models.Activity
-
 	if err := h.db.Where("id = ? AND user_id = ?", id, userID).First(&activity).Error; err != nil {
 		c.JSON(http.StatusNotFound, models.ErrorResponse{
 			Success: false,
