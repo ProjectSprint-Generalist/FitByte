@@ -1,0 +1,275 @@
+# Default values for fitbyte
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# FitByte application configuration
+app:
+  name: fitbyte
+  replicaCount: 3
+  
+  image:
+    repository: fitbyte
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+    metricsPort: 9090
+    metricsTargetPort: 9090
+  
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/client-max-body-size: "100m"
+      nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    hosts:
+      - host: fitbyte.local
+        paths:
+          - path: /api
+            pathType: Prefix
+          - path: /metrics
+            pathType: Prefix
+    tls: []
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  
+  # Environment variables
+  env:
+    - name: ENVIRONMENT
+      value: "production"
+    - name: SERVER_HOST
+      value: "0.0.0.0"
+    - name: SERVER_PORT
+      value: "8080"
+    - name: JWT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: fitbyte-secrets
+          key: jwt-secret
+    - name: JWT_EXPIRY
+      value: "24h"
+  
+  # Health checks
+  livenessProbe:
+    httpGet:
+      path: /api/v1/health
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /api/v1/health/ready
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Database configuration
+database:
+  enabled: true
+  type: postgresql
+  
+  # PostgreSQL configuration
+  postgresql:
+    enabled: true
+    auth:
+      postgresPassword: "postgres"
+      database: "fitbyte"
+      username: "fitbyte"
+    primary:
+      persistence:
+        enabled: true
+        size: 10Gi
+        storageClass: ""
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 250m
+          memory: 256Mi
+    service:
+      type: ClusterIP
+      port: 5432
+
+# MinIO object storage configuration
+minio:
+  enabled: true
+  auth:
+    rootUser: "minioadmin"
+    rootPassword: "minioadmin"
+  defaultBuckets: "fitbyte-uploads"
+  persistence:
+    enabled: true
+    size: 50Gi
+    storageClass: ""
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  service:
+    type: ClusterIP
+    port: 9000
+    consolePort: 9001
+
+# Prometheus monitoring configuration
+prometheus:
+  enabled: true
+  server:
+    persistentVolume:
+      enabled: true
+      size: 10Gi
+      storageClass: ""
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+    service:
+      type: ClusterIP
+      port: 9090
+  alertmanager:
+    enabled: true
+    persistentVolume:
+      enabled: true
+      size: 2Gi
+  kubeStateMetrics:
+    enabled: true
+  nodeExporter:
+    enabled: true
+
+# Grafana configuration
+grafana:
+  enabled: true
+  adminPassword: "admin"
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  service:
+    type: ClusterIP
+    port: 3000
+  ingress:
+    enabled: true
+    className: "nginx"
+    hosts:
+      - host: grafana.fitbyte.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+# Secrets configuration
+secrets:
+  create: true
+  data:
+    jwt-secret: "team-generalist"
+    db-password: "postgres"
+    minio-secret: "minioadmin"
+
+# ConfigMap configuration
+configMap:
+  create: true
+  data:
+    DB_HOST: "{{ include \"fitbyte.postgresql.fullname\" . }}-primary"
+    DB_PORT: "5432"
+    DB_NAME: "fitbyte"
+    DB_USER: "fitbyte"
+    DB_SSL_MODE: "disable"
+    MINIO_ENDPOINT: "{{ include \"fitbyte.minio.fullname\" . }}:9000"
+    MINIO_ACCESS_KEY: "minioadmin"
+    MINIO_USE_SSL: "false"
+    MINIO_BUCKET: "fitbyte-uploads"
+    PROMETHEUS_ENABLED: "true"
+    METRICS_PORT: "9090"
+
+# ServiceMonitor for Prometheus
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+  annotations: {}
+
+# PodDisruptionBudget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# NetworkPolicy
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []
+
+# PodSecurityPolicy
+podSecurityPolicy:
+  enabled: false
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Security Context
+podSecurityContext:
+  fsGroup: 1001
+  runAsNonRoot: true
+  runAsUser: 1001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1001
+
+# Autoscaling
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80

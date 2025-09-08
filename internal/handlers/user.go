@@ -97,6 +97,16 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 
+	// Validate the request
+	if err := req.Validate(); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Success: false,
+			Error:   "Validation error: " + err.Error(),
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
 	// Find existing user
 	var user models.User
 	if err := h.db.First(&user, userID).Error; err != nil {

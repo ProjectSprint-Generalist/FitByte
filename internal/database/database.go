@@ -35,18 +35,10 @@ func Connect(databaseURL string) error {
 func Migrate() error {
 	log.Println("Running database migrations...")
 
-	// Drop the activities table if it exists to ensure clean migration
-	if DB.Migrator().HasTable(&models.Activity{}) {
-		log.Println("Dropping existing activities table...")
-		err := DB.Migrator().DropTable(&models.Activity{})
-		if err != nil {
-			log.Printf("Warning: Could not drop activities table: %v", err)
-		}
-	}
-
 	err := DB.AutoMigrate(
 		&models.User{},
 		&models.Activity{},
+		&models.FileUpload{},
 	)
 	if err != nil {
 		log.Printf("Migration error: %v", err)

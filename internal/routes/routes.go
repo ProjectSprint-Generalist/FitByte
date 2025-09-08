@@ -27,8 +27,8 @@ func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, user
 		userAuth := v1.Group("/user")
 		userAuth.Use(middleware.IsAuthorized())
 		{
-			userAuth.GET("/", userHandler.GetUser)      
-			userAuth.PATCH("/", userHandler.UpdateUser) 
+			userAuth.GET("/", userHandler.GetUser)
+			userAuth.PATCH("/", userHandler.UpdateUser)
 		}
 
 		activity := v1.Group("/activity")

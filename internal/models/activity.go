@@ -65,7 +65,7 @@ func (a *Activity) CalculateCalories() int {
 func (a *Activity) ToResponse() ActivityResponse {
 	return ActivityResponse{
 		ActivityId:        strconv.Itoa(int(a.ID)),
-		ActivityType:      a.ActivityType,
+		ActivityType:      string(a.ActivityType),
 		DoneAt:            a.DoneAt,
 		DurationInMinutes: a.DurationInMinutes,
 		CaloriesBurned:    a.CaloriesBurned,
@@ -100,13 +100,13 @@ func IsValidActivityType(activityType string) bool {
 type Activity struct {
 	BaseEntity
 
-	UserID            uint      `gorm:"column:user_id;not null;index" json:"user_id"` //
-	ActivityType      string    `gorm:"column:activity_type;type:varchar(100);not null" json:"activity_type"`
-	DurationInMinutes int       `gorm:"column:duration_in_minutes;not null" json:"duration_in_minutes"`
-	CaloriesBurned    int       `gorm:"column:calories_burned;not null" json:"calories_burned"`
-	DoneAt            time.Time `gorm:"column:done_at;not null" json:"done_at"`
+	UserID            uint         `gorm:"column:user_id;not null;index" json:"user_id"`
+	ActivityType      ActivityType `gorm:"column:activity_type;type:varchar(100);not null" json:"activity_type"`
+	DurationInMinutes int          `gorm:"column:duration_in_minutes;not null" json:"duration_in_minutes"`
+	CaloriesBurned    int          `gorm:"column:calories_burned;not null" json:"calories_burned"`
+	DoneAt            time.Time    `gorm:"column:done_at;not null" json:"done_at"`
 
-	User User `json:"user,omitempty" gorm:"foreignKey:UserID;references:ID"` // Relasi ke User
+	User User `json:"user,omitempty" gorm:"foreignKey:UserID;references:ID"`
 }
 
 type UpdateActivityRequest struct {

@@ -1,0 +1,195 @@
+# Production values for fitbyte
+# This file contains production-specific configurations
+
+# Global configuration
+global:
+  imageRegistry: "your-registry.com"
+  imagePullSecrets:
+    - name: registry-secret
+
+# FitByte application configuration
+app:
+  name: fitbyte
+  replicaCount: 3
+  
+  image:
+    repository: your-registry.com/fitbyte
+    tag: "v1.0.0"
+    pullPolicy: Always
+  
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+    metricsPort: 9090
+    metricsTargetPort: 9090
+  
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/client-max-body-size: "100m"
+      nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    hosts:
+      - host: api.fitbyte.com
+        paths:
+          - path: /api
+            pathType: Prefix
+          - path: /metrics
+            pathType: Prefix
+    tls:
+      - secretName: fitbyte-tls
+        hosts:
+          - api.fitbyte.com
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  
+  # Environment variables
+  env:
+    - name: ENVIRONMENT
+      value: "production"
+    - name: PORT
+      value: "8080"
+    - name: DATABASE_URL
+      valueFrom:
+        secretKeyRef:
+          name: fitbyte-secrets
+          key: database-url
+    - name: JWT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: fitbyte-secrets
+          key: jwt-secret
+    - name: MINIO_ENDPOINT
+      value: "minio-service:9000"
+    - name: MINIO_ACCESS_KEY
+      valueFrom:
+        secretKeyRef:
+          name: fitbyte-secrets
+          key: minio-access-key
+    - name: MINIO_SECRET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: fitbyte-secrets
+          key: minio-secret-key
+    - name: MINIO_USE_SSL
+      value: "false"
+    - name: MINIO_BUCKET_NAME
+      value: "fitbyte-files"
+  
+  # Health checks
+  livenessProbe:
+    httpGet:
+      path: /v1/health
+      port: 8080
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /v1/health/ready
+      port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Database configuration
+database:
+  enabled: false  # Use external managed database in production
+  postgresql:
+    enabled: false
+
+# MinIO object storage configuration
+minio:
+  enabled: false  # Use external managed object storage in production
+
+# Prometheus monitoring configuration
+prometheus:
+  enabled: true
+  server:
+    persistentVolume:
+      enabled: true
+      size: 50Gi
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+
+# Grafana configuration
+grafana:
+  enabled: true
+  adminPassword: "secure-admin-password"
+  persistence:
+    enabled: true
+    size: 20Gi
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+# Secrets configuration
+secrets:
+  create: true
+  data:
+    jwt-secret: "CHANGE_ME_IN_PRODUCTION"
+    database-url: "postgres://user:password@external-db:5432/fitbyte?sslmode=require"
+    minio-access-key: "CHANGE_ME_IN_PRODUCTION"
+    minio-secret-key: "CHANGE_ME_IN_PRODUCTION"
+
+# ServiceMonitor for Prometheus
+serviceMonitor:
+  enabled: true
+  interval: 15s
+  scrapeTimeout: 10s
+
+# PodDisruptionBudget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# NetworkPolicy
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 9000
+
+# Autoscaling
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80

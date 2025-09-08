@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  fitbyte-app:
+    build: .
+    container_name: fitbyte-api
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgres://fitbyte:postgres@postgres:5432/fitbyte_db?sslmode=disable
+      - MINIO_ENDPOINT=minio:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - fitbyte-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: fitbyte-postgres
+    environment:
+      - POSTGRES_DB=fitbyte_db
+      - POSTGRES_USER=fitbyte
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - fitbyte-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fitbyte -d fitbyte_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: fitbyte-minio
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - fitbyte-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: fitbyte-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - fitbyte-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  minio_data:
+  redis_data:
+
+networks:
+  fitbyte-network:
+    driver: bridge

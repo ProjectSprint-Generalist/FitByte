@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fitbyte.fullname" . }}
+  labels:
+    {{- include "fitbyte.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.app.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "fitbyte.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      labels:
+        {{- include "fitbyte.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "fitbyte.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.global.imageRegistry }}{{ .Values.app.image.repository }}:{{ .Values.app.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.app.service.targetPort }}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ .Values.app.service.metricsTargetPort }}
+              protocol: TCP
+          env:
+            - name: DATABASE_URL
+              value: "postgres://{{ .Values.database.postgresql.auth.username }}:{{ .Values.database.postgresql.auth.postgresPassword }}@{{ include "fitbyte.postgresql.fullname" . }}-primary:{{ .Values.database.postgresql.service.port }}/{{ .Values.database.postgresql.auth.database }}?sslmode={{ .Values.configMap.data.DB_SSL_MODE }}"
+            {{- range .Values.app.env }}
+            - name: {{ .name }}
+              {{- if .value }}
+              value: {{ .value | quote }}
+              {{- else if .valueFrom }}
+              valueFrom:
+                {{- toYaml .valueFrom | nindent 16 }}
+              {{- end }}
+            {{- end }}
+            - name: MINIO_ENDPOINT
+              value: {{ .Values.configMap.data.MINIO_ENDPOINT | quote }}
+            - name: MINIO_ACCESS_KEY
+              value: {{ .Values.configMap.data.MINIO_ACCESS_KEY | quote }}
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "fitbyte.fullname" . }}-secrets
+                  key: minio-secret
+            - name: MINIO_USE_SSL
+              value: {{ .Values.configMap.data.MINIO_USE_SSL | quote }}
+            - name: MINIO_BUCKET
+              value: {{ .Values.configMap.data.MINIO_BUCKET | quote }}
+            - name: PROMETHEUS_ENABLED
+              value: {{ .Values.configMap.data.PROMETHEUS_ENABLED | quote }}
+            - name: METRICS_PORT
+              value: {{ .Values.configMap.data.METRICS_PORT | quote }}
+          livenessProbe:
+            {{- toYaml .Values.app.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.app.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.app.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "fitbyte.fullname" . }}-config
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
