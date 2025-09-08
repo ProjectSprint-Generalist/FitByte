@@ -196,7 +196,7 @@ func (h *ActivityHandler) GetActivity(c *gin.Context) {
 		return
 	}
 
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := strconv.Atoi(c.Param("activityId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Success: false,
@@ -236,7 +236,7 @@ func (h *ActivityHandler) UpdateActivity(c *gin.Context) {
 		return
 	}
 
-	id, err := strconv.Atoi(c.Param("id")) // Convert :id parameter to integer
+	id, err := strconv.Atoi(c.Param("activityId")) // Convert :activityId parameter to integer
 	if err != nil {
 		// Return a 400 Bad Request response if the ID is invalid
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
@@ -326,7 +326,6 @@ func (h *ActivityHandler) UpdateActivity(c *gin.Context) {
 }
 
 func (h *ActivityHandler) DeleteActivity(c *gin.Context) {
-	// Get user ID from JWT token
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
