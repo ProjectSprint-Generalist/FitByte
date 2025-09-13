@@ -59,3 +59,4 @@ func SetupRoutes(router *gin.Engine, healthHandler *handlers.HealthHandler, user
 		})
 	})
 }
+}
